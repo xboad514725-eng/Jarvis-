@@ -76,18 +76,39 @@ function showResults(){
  window.testReport={student,date:testDate,paragraph:window.studentParagraph||'',score:correct,total:20,percentage:Math.round(correct/20*100),answers:order.map((x,i)=>({question:QUESTIONS[x].q,section:QUESTIONS[x].section,level:QUESTIONS[x].level,topic:QUESTIONS[x].topic,selectedLetter:String.fromCharCode(65+answers[i]),selected:QUESTIONS[x].opts[answers[i]],correctLetter:String.fromCharCode(65+QUESTIONS[x].a),correct:QUESTIONS[x].opts[QUESTIONS[x].a],isCorrect:answers[i]===QUESTIONS[x].a,explanation:QUESTIONS[x].why,explanation_ar:QUESTIONS[x].explanation_ar,example:QUESTIONS[x].example}))};
  saveReportLocally(window.testReport);
  renderSavedReports();
- uploadAttempt(window.testReport).catch(err=>{console.error(err);const note=document.createElement('p');note.className='notice';note.style.color='var(--red)';note.textContent='تم إنهاء الامتحان وحفظ النتيجة على هذا الجهاز، لكن تعذر إرسال نسخة إلى قاعدة البيانات: '+(err.message||err);document.getElementById('result').appendChild(note);});
+ uploadAttempt(window.testReport).catch(err=>{console.error(err);showUploadStatus('لم تصل النتيجة لقاعدة البيانات بعد. النتيجة محفوظة على الجهاز وسنحاول إرسالها مرة أخرى تلقائيًا. السبب: '+(err.message||err),true);});
 }
+function showUploadStatus(message,isError=false){
+ let note=document.getElementById('databaseUploadStatus');
+ if(!note){note=document.createElement('div');note.id='databaseUploadStatus';note.className='review-item';document.getElementById('result').appendChild(note);}
+ note.style.color=isError?'var(--red)':'var(--green)';note.textContent=message;
+}
+function pendingUploadKey(){return 'englishTestPendingUploads';}
+function readPendingUploads(){try{return JSON.parse(localStorage.getItem(pendingUploadKey())||'[]')}catch(e){return []}}
+function writePendingUploads(items){localStorage.setItem(pendingUploadKey(),JSON.stringify(items));}
 async function uploadAttempt(report){
- await loadSupabase();
  const grammar=report.answers.filter(a=>a.section==='Grammar'&&a.isCorrect).length;
  const vocabulary=report.answers.filter(a=>a.section==='Vocabulary'&&a.isCorrect).length;
- const payload={attempt_code:'ET-'+Date.now().toString(36).toUpperCase()+'-'+Math.random().toString(36).slice(2,7).toUpperCase(),student_name:report.student,test_date:report.date,total_score:report.score,total_questions:20,grammar_score:grammar,vocabulary_score:vocabulary,paragraph_text:report.paragraph||'',answers:report.answers};
- const {error}=await sb.from('english_test_attempts').insert(payload);
- if(error) throw error;
- const note=document.createElement('p');note.className='notice';note.style.color='var(--green)';note.textContent='✓ Your result and all 20 answers have been securely sent to your teacher.';
- const writing=document.createElement('div');writing.className='review-item';writing.innerHTML='<strong>Student paragraph</strong><p style="white-space:pre-wrap"></p>';writing.querySelector('p').textContent=report.paragraph||'';document.getElementById('allAnswers').after(writing);document.getElementById('result').appendChild(note);
+ const localKey=report.student+'|'+report.date+'|'+report.score+'|'+report.answers.length;
+ const pending=readPendingUploads();let queued=pending.find(x=>x.localKey===localKey);
+ if(!queued){queued={localKey,payload:{attempt_code:'ET-'+Date.now().toString(36).toUpperCase()+'-'+Math.random().toString(36).slice(2,7).toUpperCase(),student_name:report.student,test_date:report.date,total_score:report.score,total_questions:20,grammar_score:grammar,vocabulary_score:vocabulary,paragraph_text:report.paragraph||'',answers:report.answers}};pending.push(queued);writePendingUploads(pending);}
+ showUploadStatus('جارٍ إرسال النتيجة إلى قاعدة البيانات...');
+ try{
+  await loadSupabase();
+  const {error}=await sb.from('english_test_attempts').insert(queued.payload);
+  if(error&&error.code!=='23505')throw error;
+  writePendingUploads(readPendingUploads().filter(x=>x.localKey!==localKey));
+  showUploadStatus('✓ تم إرسال النتيجة وكل الإجابات إلى قاعدة البيانات بنجاح.');
+ }catch(error){showUploadStatus('تعذر إرسال النتيجة حتى الآن. سنحتفظ بها على هذا الجهاز ونعيد المحاولة تلقائيًا. السبب: '+(error.message||String(error)),true);throw error;}
 }
+async function retryPendingUploads(){
+ const pending=readPendingUploads();
+ for(const item of pending){try{await loadSupabase();const {error}=await sb.from('english_test_attempts').insert(item.payload);if(error&&error.code!=='23505')throw error;writePendingUploads(readPendingUploads().filter(x=>x.localKey!==item.localKey));}catch(error){console.error('Pending exam upload retry failed:',error);return;}}
+ if(pending.length)showUploadStatus('✓ تم إرسال الامتحان المحفوظ سابقًا بنجاح إلى قاعدة البيانات.');
+}
+window.addEventListener('online',retryPendingUploads);
+setTimeout(retryPendingUploads,2500);
+setInterval(()=>{if(navigator.onLine)retryPendingUploads()},30000);
 function saveReportLocally(report){
  try{const old=JSON.parse(localStorage.getItem('englishTestReports')||'[]');const key=report.student+'|'+report.date+'|'+report.score+'|'+report.answers.length;if(!old.some(x=>x.localKey===key)){report.localKey=key;report.savedAt=new Date().toISOString();old.push(report);localStorage.setItem('englishTestReports',JSON.stringify(old));}}catch(e){console.error('Local report save failed',e);}
 }
