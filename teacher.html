@@ -1,50 +1,92 @@
-<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Teacher Dashboard | English Course</title><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><style>
-:root{--bg:#f4f6fa;--card:#fff;--ink:#172033;--muted:#687386;--line:#e2e7ef;--blue:#405fc4;--green:#13845c;--red:#c33e49}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.7 system-ui,Arial,sans-serif}.wrap{max-width:1100px;margin:auto;padding:20px}.card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:20px;margin:14px 0}.btn{background:var(--blue);color:#fff;padding:10px 15px;border-radius:10px;border:0;cursor:pointer;font:inherit}.alt{background:#e9edf7;color:var(--ink)}.muted{color:var(--muted);font-size:13px}.stats,.links{display:flex;gap:10px;flex-wrap:wrap}.stat{background:#f2f5fb;border-radius:10px;padding:12px;min-width:130px}.stat b{display:block;font-size:23px}.attempt{border:1px solid var(--line);border-radius:12px;padding:14px;margin:12px 0}.good{color:var(--green)}.bad,.error{color:var(--red)}.answer{border-top:1px solid var(--line);padding:10px 0}.paragraph{white-space:pre-wrap;background:#f7f8fb;padding:12px;border-radius:9px}input,textarea{font:inherit;padding:11px;border:1px solid var(--line);border-radius:9px;max-width:100%}input[type=email],input[type=password]{width:100%;margin:6px 0 12px}.hidden{display:none!important}@media(max-width:600px){.wrap{padding:10px}.card{padding:14px}}</style></head><body><main class="wrap">
-<header><div class="muted">ENGLISH COURSE · PRIVATE TEACHER AREA</div><h1>لوحة المدرّسة</h1><p class="muted">عرض ومتابعة نتائج الطالبات.</p></header>
-<div id="dashboard"><section class="card"><div class="links"><a class="btn" href="lecture1.html#first-class-session">المحاضرة الأولى</a><a class="btn alt" href="index.html">امتحان الطالبات</a><a class="btn alt" href="lecture1.html">100 كلمة B2 + 50 Expressions</a><button class="btn alt" onclick="loadAttempts()">تحديث النتائج</button></div></section>
-<section class="card"><h2>نتائج الطلاب</h2><p class="muted">افتح القسم ثم اضغط على اسم الطالب لعرض كل امتحاناته وتقييماته.</p><div class="stats" id="stats"></div><p id="status" class="muted"></p><div id="reports"></div></section>
-<section class="card"><h2>تقييمات المدرّس</h2><p class="muted">كل تقييم تكتبه هنا يُحفظ في Supabase ويظهر بعد فتح اللوحة من أي جهاز.</p><label>اسم الطالب</label><input id="assessmentStudent" type="text" maxlength="120" placeholder="اكتب اسم الطالب" style="width:100%;margin:6px 0 12px"><label>نوع التقييم</label><input id="assessmentType" type="text" maxlength="80" value="Speaking assessment" placeholder="Speaking / Writing / General" style="width:100%;margin:6px 0 12px"><label>التقييم والملاحظات</label><textarea id="assessmentText" rows="5" maxlength="10000" style="width:100%" placeholder="اكتب أي تقييم أو ملاحظات تخص الطالب..."></textarea><p><button class="btn" onclick="saveAssessment()">حفظ التقييم في قاعدة البيانات</button> <button class="btn alt" onclick="loadAssessments()">تحديث التقييمات</button></p><p id="assessmentStatus" class="muted"></p><div id="assessments"></div></section></div>
-</main><script>
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>لوحة المدرّسة | English Course</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{--bg:#f4f6fa;--panel:#fff;--ink:#172033;--muted:#748096;--line:#e7ebf2;--blue:#405fc4;--blue2:#edf1ff;--green:#12845b;--red:#c23e4a;--shadow:0 12px 35px rgba(23,32,51,.06)}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.7 system-ui,Arial,sans-serif}button,input,textarea{font:inherit}.app{display:grid;grid-template-columns:250px minmax(0,1fr);min-height:100vh}.side{background:#17233b;color:#fff;padding:25px 18px;position:sticky;top:0;height:100vh}.brand{font-size:21px;font-weight:850;letter-spacing:.08em;padding:4px 12px 28px}.brand small{display:block;font-size:10px;color:#9eabc5;letter-spacing:.16em;font-weight:600}.navtitle{font-size:10px;color:#8796b5;padding:10px 12px}.nav a{display:flex;gap:12px;align-items:center;color:#d9e1f0;text-decoration:none;padding:11px 13px;border-radius:10px;margin:4px 0}.nav a.active,.nav a:hover{background:#2a3c60;color:white}.sidefoot{position:absolute;bottom:20px;right:20px;left:20px;color:#93a1bb;font-size:11px;border-top:1px solid #34425d;padding-top:14px}.main{padding:30px;max-width:1500px;width:100%;margin:auto}.top{display:flex;justify-content:space-between;align-items:center;gap:14px;margin-bottom:24px}.eyebrow{color:var(--blue);font-size:10px;font-weight:800;letter-spacing:.15em}.top h1{font-size:27px;margin:3px 0}.muted{color:var(--muted)}.actions{display:flex;gap:8px;align-items:center}.btn{border:0;background:var(--blue);color:#fff;border-radius:10px;padding:10px 15px;cursor:pointer;font-weight:700}.btn.secondary{background:var(--blue2);color:var(--blue)}.btn:disabled{opacity:.55;cursor:wait}.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:20px}.stat,.panel{background:var(--panel);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow)}.stat{padding:18px}.statlabel{color:var(--muted);font-size:12px}.stat strong{display:block;font-size:28px;line-height:1.4;margin-top:5px}.stat .hint{font-size:11px;color:var(--muted)}.layout{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(280px,.8fr);gap:16px;align-items:start}.panel{padding:20px;margin-bottom:16px}.panelhead{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:14px}.panel h2{font-size:17px;margin:0}.exam{border:1px solid var(--line);border-radius:13px;padding:14px;margin:10px 0;background:#fff}.examhead{display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap}.studentname{font-weight:800;font-size:15px}.tag{display:inline-block;background:#eef2ff;color:#405fc4;border-radius:30px;padding:3px 9px;font-size:11px;font-weight:700}.score{font-size:18px;font-weight:850}.exam details{margin-top:10px;border-top:1px solid var(--line);padding-top:9px}.exam summary{cursor:pointer;color:var(--blue);font-weight:700}.answer{border-top:1px solid var(--line);padding:10px 0}.good{color:var(--green)}.bad{color:var(--red)}.paragraph{white-space:pre-wrap;background:#f6f8fc;padding:12px;border-radius:9px;margin:8px 0}.studentlist{display:grid;gap:8px}.studentbtn{display:flex;justify-content:space-between;align-items:center;text-align:right;background:#fff;border:1px solid var(--line);border-radius:11px;padding:12px;cursor:pointer;color:var(--ink)}.studentbtn.selected{border-color:var(--blue);background:#f1f4ff}.studentbtn small{display:block;color:var(--muted)}.detailtitle{font-size:19px;font-weight:850}.field{display:block;width:100%;border:1px solid var(--line);border-radius:10px;padding:11px;margin:7px 0 12px;background:#fff;color:var(--ink)}textarea.field{resize:vertical}.note{border:1px solid var(--line);border-radius:10px;padding:12px;margin:9px 0}.empty{padding:25px;text-align:center;color:var(--muted);background:#f8f9fc;border-radius:12px}.status{font-size:12px;color:var(--muted);margin:10px 0}.error{color:var(--red)}.success{color:var(--green)}.hidden{display:none!important}
+@media(max-width:900px){.app{grid-template-columns:1fr}.side{position:relative;height:auto;padding:12px 15px}.brand{padding:4px 8px 10px}.navtitle,.sidefoot{display:none}.nav{display:flex;overflow:auto}.nav a{white-space:nowrap;padding:8px 10px}.main{padding:17px}.layout{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:480px){.top{align-items:flex-start;flex-direction:column}.top h1{font-size:23px}.stat{padding:13px}.stat strong{font-size:24px}.panel{padding:14px}}
+</style></head>
+<body>
+<div class="app">
+<aside class="side"><div class="brand">ENGLISH COURSE<small>TEACHER CONTROL CENTER</small></div><div class="navtitle">WORKSPACE</div><nav class="nav"><a class="active" href="#overview">◫ <span>الرئيسية</span></a><a href="#all-exams">▤ <span>كل الامتحانات</span></a><a href="#students">♙ <span>نتائج الطلاب</span></a><a href="#assessment">✎ <span>التقييمات</span></a><a href="index.html">↗ <span>صفحة الامتحان</span></a></nav><div class="sidefoot">Teacher Dashboard<br>تحديث تلقائي للنتائج كل 15 ثانية</div></aside>
+<main class="main">
+<header class="top" id="overview"><div><div class="eyebrow">ENGLISH COURSE · ADMINISTRATION</div><h1>لوحة تحكم المدرّسة</h1><div class="muted">متابعة الامتحانات ونتائج الطلاب والتقييمات من مكان واحد.</div></div><div class="actions"><button class="btn secondary" id="refreshBtn" onclick="refreshAll()">↻ تحديث البيانات</button></div></header>
+<section class="stats"><div class="stat"><div class="statlabel">إجمالي الامتحانات</div><strong id="examCount">—</strong><div class="hint">كل محاولات الامتحان المسلّمة</div></div><div class="stat"><div class="statlabel">عدد الطلاب</div><strong id="studentCount">—</strong><div class="hint">أسماء الطلاب المسجلين</div></div><div class="stat"><div class="statlabel">متوسط الدرجات</div><strong id="averageScore">—</strong><div class="hint">من 20 درجة</div></div><div class="stat"><div class="statlabel">التقييمات المحفوظة</div><strong id="assessmentCount">—</strong><div class="hint">تقييمات مرتبطة بالطلاب</div></div></section>
+<div class="layout">
+<section>
+<div class="panel" id="all-exams"><div class="panelhead"><h2>آخر الامتحانات المسلّمة</h2><span class="tag" id="liveTag">مباشر</span></div><p class="muted" style="margin-top:-7px">أي امتحان جديد يتم تسليمه سيظهر هنا تلقائيًا بعد تحديث البيانات.</p><div id="latestExams"><div class="empty">جارٍ تحميل الامتحانات...</div></div></div>
+<div class="panel" id="studentDetail"><div class="panelhead"><h2>تفاصيل الطالب</h2></div><div id="studentContent" class="empty">اختار اسم طالب من قائمة نتائج الطلاب لعرض امتحاناته وتقييماته.</div></div>
+</section>
+<aside>
+<div class="panel" id="students"><div class="panelhead"><h2>نتائج الطلاب</h2><span class="tag" id="studentTag">0</span></div><div class="muted" style="font-size:12px;margin-bottom:12px">اضغط على اسم الطالب لعرض كل امتحاناته.</div><div id="studentList" class="studentlist"><div class="empty">جارٍ تحميل الطلاب...</div></div></div>
+<div class="panel" id="assessment"><div class="panelhead"><h2>إضافة تقييم</h2></div><div class="muted" style="font-size:12px">اختار الطالب ثم اكتب التقييم واحفظه في قاعدة البيانات.</div><label for="assessmentType">نوع التقييم</label><input class="field" id="assessmentType" maxlength="80" value="Oral assessment" placeholder="Speaking / Writing / General"><label for="assessmentText">ملاحظات المدرّسة</label><textarea class="field" id="assessmentText" rows="5" maxlength="10000" placeholder="الطلاقة، النطق، القواعد، المفردات، التفاعل..."></textarea><button class="btn" id="saveAssessmentBtn" onclick="saveAssessment()">حفظ التقييم</button><div id="assessmentStatus" class="status" aria-live="polite"></div></div>
+</aside>
+</div><div id="globalStatus" class="status"></div>
+</main></div>
+<script>
 const URL='https://ruliophlnvsexzjekdbs.supabase.co',KEY='sb_publishable_8un51zcumxHLX_M8gRqziQ_YxhgXnSC';
 const db=window.supabase.createClient(URL,KEY),$=id=>document.getElementById(id);
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-let allAttempts=[],allAssessments=[];
-async function loadAttempts(){
- $('status').textContent='جارٍ تحميل نتائج الطلاب...';
- const {data,error}=await db.from('english_test_attempts').select('*').order('created_at',{ascending:false});
- if(error){$('status').textContent='تعذر تحميل النتائج: '+error.message;return}
- allAttempts=data||[];renderReports();
+let attempts=[],assessments=[],students=[],selectedStudent='';
+function groupStudents(){
+ const map=new Map();
+ attempts.forEach(r=>{const name=String(r.student_name||'غير معروف').trim(),key=name.toLocaleLowerCase();if(!map.has(key))map.set(key,{name:name,attempts:[]});map.get(key).attempts.push(r)});
+ assessments.forEach(r=>{const name=String(r.student_name||'غير معروف').trim(),key=name.toLocaleLowerCase();if(!map.has(key))map.set(key,{name:name,attempts:[]})});
+ students=[...map.values()].sort((a,b)=>a.name.localeCompare(b.name,'ar'));
 }
-async function loadAssessments(){
- const {data,error}=await db.from('english_teacher_assessments').select('*').order('created_at',{ascending:false});
- if(error){$('status').textContent='تعذر تحميل تقييمات المدرّس: '+error.message;return}
- allAssessments=data||[];renderReports();
+function dateText(v){if(!v)return '—';const d=new Date(v);return isNaN(d)?esc(v):d.toLocaleString('ar-EG',{dateStyle:'medium',timeStyle:'short'})}
+function render(){
+ groupStudents();
+ $('examCount').textContent=attempts.length;
+ $('studentCount').textContent=students.length;
+ $('assessmentCount').textContent=assessments.length;
+ const avg=attempts.length?attempts.reduce((n,r)=>n+(Number(r.total_score)||0),0)/attempts.length:0;
+ $('averageScore').textContent=attempts.length?avg.toFixed(1)+'/20':'—';
+ $('studentTag').textContent=students.length;
+ $('studentList').innerHTML=students.length?students.map(s=>{const count=s.attempts.length;return '<button class="studentbtn '+(selectedStudent.toLocaleLowerCase()===s.name.toLocaleLowerCase()?'selected':'')+'" onclick="selectStudent('+JSON.stringify(s.name).replace(/</g,'\\u003c')+')"><span><b>'+esc(s.name)+'</b><small>'+count+' امتحان · '+assessments.filter(a=>a.student_name.trim().toLocaleLowerCase()===s.name.toLocaleLowerCase()).length+' تقييم</small></span><b>‹</b></button>'}).join(''):'<div class="empty">لا يوجد طلاب حتى الآن.</div>';
+ const recent=attempts.slice().sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
+ $('latestExams').innerHTML=recent.length?recent.map((r,i)=>examCard(r,i,false)).join(''):'<div class="empty">لسه مفيش امتحانات اتسلّمت.</div>';
+ if(selectedStudent){renderStudent(selectedStudent)}else if(students.length){selectedStudent=students[0].name;render()}
 }
-function renderReports(){
- const groups=new Map();
- allAttempts.forEach(r=>{const name=String(r.student_name||'غير معروف').trim(),key=name.toLocaleLowerCase();if(!groups.has(key))groups.set(key,{name,attempts:[]});groups.get(key).attempts.push(r)});
- allAssessments.forEach(r=>{const name=String(r.student_name||'غير معروف').trim(),key=name.toLocaleLowerCase();if(!groups.has(key))groups.set(key,{name,attempts:[]})});
- const students=[...groups.values()].sort((a,b)=>a.name.localeCompare(b.name,'ar'));
- $('stats').innerHTML='<div class="stat"><b>'+allAttempts.length+'</b>امتحان محفوظ</div><div class="stat"><b>'+students.length+'</b>طالب</div><div class="stat"><b>'+allAssessments.length+'</b>تقييم شفهي محفوظ</div>';
- $('status').textContent=students.length?'اضغط على اسم الطالب لفتح الامتحانات والتقييم الشفهي.':'لا توجد نتائج طلاب محفوظة حتى الآن.';
- $('reports').innerHTML=students.map((s,i)=>{
-  const notes=allAssessments.filter(x=>String(x.student_name||'').trim().toLocaleLowerCase()===s.name.toLocaleLowerCase());
-  const attempts=s.attempts.map((r,j)=>{const a=Array.isArray(r.answers)?r.answers:[];return '<details class="attempt"><summary><b>الامتحان '+(j+1)+'</b> — '+esc(r.total_score)+'/20 · Grammar '+esc(r.grammar_score)+'/10 · Vocabulary '+esc(r.vocabulary_score)+'/10 · '+esc(r.test_date||'')+'</summary><p class="muted">'+esc(r.attempt_code||'')+' · '+esc(r.created_at?new Date(r.created_at).toLocaleString():'')+'</p><h4>فقرة الكتابة</h4><div class="paragraph">'+esc(r.paragraph_text||'لم تُكتب فقرة.')+'</div><h4>الإجابات</h4>'+a.map((x,k)=>'<div class="answer"><b>السؤال '+(k+1)+' · '+esc(x.section)+' · '+esc(x.level)+' · '+esc(x.topic||'')+'</b><p>'+esc(x.question)+'</p><div class="'+(x.isCorrect?'good':'bad')+'">إجابة الطالب: '+esc(x.selectedLetter)+'. '+esc(x.selected)+' — '+(x.isCorrect?'صحيحة':'خطأ')+'</div><div class="good">الإجابة الصحيحة: '+esc(x.correctLetter)+'. '+esc(x.correct)+'</div><p>'+esc(x.explanation_ar||x.explanation||'')+'</p></div>').join('')+'</details>'}).join('');
-  const saved=notes.map(n=>'<article class="attempt"><div class="muted">'+esc(n.assessment_type||'تقييم شفهي')+' · '+esc(new Date(n.created_at).toLocaleString())+'</div><div class="paragraph">'+esc(n.assessment_text)+'</div></article>').join('')||'<p class="muted">لا توجد ملاحظات محفوظة لهذا الطالب.</p>';
-  return '<details class="attempt student"><summary><b>'+esc(s.name)+'</b> — '+s.attempts.length+' امتحان · '+notes.length+' تقييم شفهي</summary><div style="padding-top:12px">'+(attempts||'<p class="muted">لا توجد امتحانات محفوظة لهذا الطالب بعد.</p>')+'<h3>ملاحظات التقييم الشفهي</h3>'+saved+'<label for="oral-'+i+'">اكتب ملاحظة أو تقييمًا شفهيًا جديدًا</label><textarea id="oral-'+i+'" rows="4" maxlength="10000" style="width:100%;margin:8px 0" placeholder="الطلاقة، النطق، القواعد، المفردات، التفاعل..."></textarea><p><button class="btn" onclick="saveAssessment('+i+')">حفظ التقييم لهذا الطالب</button></p></div></details>';
- }).join('');
+function examCard(r,i,expanded){
+ const answers=Array.isArray(r.answers)?r.answers:[];
+ return '<article class="exam"><div class="examhead"><div><div class="studentname">'+esc(r.student_name||'غير معروف')+'</div><div class="muted" style="font-size:11px">'+dateText(r.created_at||r.test_date)+'</div></div><div><span class="score">'+esc(r.total_score)+'/20</span> <span class="tag">Grammar '+esc(r.grammar_score)+'/10 · Vocabulary '+esc(r.vocabulary_score)+'/10</span></div></div><details '+(expanded?'open':'')+'><summary>عرض تفاصيل الامتحان والإجابات ('+answers.length+' سؤال)</summary><p class="muted">تاريخ الامتحان: '+esc(r.test_date||'—')+' · رقم المحاولة: '+esc(r.attempt_code||'—')+'</p><h4>فقرة الكتابة</h4><div class="paragraph">'+esc(r.paragraph_text||'لم يكتب الطالب فقرة.')+'</div><h4>الإجابات بالتفصيل</h4>'+answers.map((a,k)=>'<div class="answer"><b>السؤال '+(k+1)+' · '+esc(a.section)+' · '+esc(a.level)+' · '+esc(a.topic||'')+'</b><p>'+esc(a.question)+'</p><div class="'+(a.isCorrect?'good':'bad')+'">إجابة الطالب: '+esc(a.selectedLetter)+'. '+esc(a.selected)+' — '+(a.isCorrect?'صحيحة':'خطأ')+'</div><div class="good">الإجابة الصحيحة: '+esc(a.correctLetter)+'. '+esc(a.correct)+'</div><p>'+esc(a.explanation_ar||a.explanation||'')+'</p></div>').join('')+'</details></article>';
 }
-async function saveAssessment(i){
- const s=[...new Map([...allAttempts.map(r=>String(r.student_name||'').trim()),...allAssessments.map(r=>String(r.student_name||'').trim())].map(n=>[n.toLocaleLowerCase(),n])).values()].sort((a,b)=>a.localeCompare(b,'ar'))[i];
- if(!s){alert('لم يتم تحديد الطالب. حدّث الصفحة وحاول مرة أخرى.');return}
- const field=$('oral-'+i),assessment=field?.value.trim();
- if(!assessment){alert('اكتب الملاحظة الشفهية أولاً.');field?.focus();return}
- const button=field.parentElement.querySelector('button');button.disabled=true;button.textContent='جارٍ الحفظ...';
+function selectStudent(name){selectedStudent=name;render();$('studentDetail').scrollIntoView({behavior:'smooth',block:'start'})}
+function renderStudent(name){
+ const s=students.find(x=>x.name.toLocaleLowerCase()===name.toLocaleLowerCase());if(!s){$('studentContent').textContent='لم يتم العثور على الطالب.';return}
+ const notes=assessments.filter(a=>a.student_name.trim().toLocaleLowerCase()===s.name.toLocaleLowerCase()).sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
+ $('studentContent').innerHTML='<div class="detailtitle">'+esc(s.name)+'</div><p class="muted">'+s.attempts.length+' امتحان · '+notes.length+' تقييم محفوظ</p>'+(s.attempts.slice().sort((a,b)=>new Date(b.created_at)-new Date(a.created_at)).map((r,i)=>examCard(r,i,true)).join('')||'<div class="empty">لا توجد امتحانات محفوظة لهذا الطالب.</div>')+'<h3>التقييمات السابقة</h3>'+(notes.map(n=>'<div class="note"><div class="tag">'+esc(n.assessment_type||'تقييم')+'</div><div class="muted" style="font-size:11px">'+dateText(n.created_at)+'</div><p style="white-space:pre-wrap">'+esc(n.assessment_text)+'</p></div>').join('')||'<p class="muted">لا توجد تقييمات محفوظة بعد.</p>');
+}
+async function refreshAll(){
+ const btn=$('refreshBtn');btn.disabled=true;btn.textContent='جارٍ التحديث...';$('globalStatus').textContent='جارٍ تحميل البيانات من قاعدة البيانات...';
  try{
-  const {error}=await db.from('english_teacher_assessments').insert({student_name:s,assessment_type:'Oral assessment',assessment_text:assessment});
-  if(error)throw error;
-  field.value='';await loadAssessments();alert('تم حفظ التقييم الشفهي للطالب '+s+' في قاعدة البيانات.');
- }catch(e){$('status').textContent='فشل حفظ التقييم: '+(e.message||e);button.disabled=false;button.textContent='حفظ التقييم لهذا الطالب';}
+  const [a,n]=await Promise.all([db.from('english_test_attempts').select('*').order('created_at',{ascending:false}),db.from('english_teacher_assessments').select('*').order('created_at',{ascending:false})]);
+  if(a.error)throw new Error('تحميل الامتحانات: '+a.error.message);
+  if(n.error)throw new Error('تحميل التقييمات: '+n.error.message);
+  attempts=a.data||[];assessments=n.data||[];
+  if(selectedStudent&&!attempts.some(x=>x.student_name.toLocaleLowerCase()===selectedStudent.toLocaleLowerCase())&&!assessments.some(x=>x.student_name.toLocaleLowerCase()===selectedStudent.toLocaleLowerCase()))selectedStudent='';
+  render();$('globalStatus').textContent='تم تحديث البيانات · '+dateText(new Date().toISOString());$('globalStatus').className='status success';
+ }catch(e){$('globalStatus').textContent='تعذر تحميل البيانات: '+e.message;$('globalStatus').className='status error';$('latestExams').innerHTML='<div class="empty error">'+esc(e.message)+'</div>'}
+ finally{btn.disabled=false;btn.textContent='↻ تحديث البيانات'}
 }
-loadAttempts();loadAssessments();
+async function saveAssessment(){
+ const status=$('assessmentStatus'),btn=$('saveAssessmentBtn'),text=$('assessmentText').value.trim(),type=$('assessmentType').value.trim()||'General assessment';
+ if(!selectedStudent){status.textContent='اختار اسم الطالب من قائمة نتائج الطلاب أولاً.';status.className='status error';return}
+ if(!text){status.textContent='اكتب التقييم قبل الحفظ.';status.className='status error';$('assessmentText').focus();return}
+ btn.disabled=true;btn.textContent='جارٍ الحفظ...';status.textContent='جارٍ حفظ التقييم في قاعدة البيانات...';status.className='status';
+ try{
+  const {data,error}=await db.from('english_teacher_assessments').insert({student_name:selectedStudent,assessment_type:type,assessment_text:text}).select('*').single();
+  if(error)throw error;
+  if(!data||!data.id)throw new Error('لم ترجع قاعدة البيانات سجلًا محفوظًا.');
+  assessments.unshift(data);$('assessmentText').value='';render();status.textContent='تم حفظ التقييم بنجاح في قاعدة البيانات.';status.className='status success';
+ }catch(e){status.textContent='فشل حفظ التقييم: '+(e.message||String(e));status.className='status error'}
+ finally{btn.disabled=false;btn.textContent='حفظ التقييم'}
+}
+refreshAll();
+setInterval(()=>{if(document.visibilityState==='visible')refreshAll()},15000);
 </script></body></html>
