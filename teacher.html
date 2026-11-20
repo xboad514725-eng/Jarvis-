@@ -3,7 +3,6 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>لوحة المدرّسة | English Course</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root{--bg:#f4f6fa;--panel:#fff;--ink:#172033;--muted:#748096;--line:#e7ebf2;--blue:#405fc4;--blue2:#edf1ff;--green:#12845b;--red:#c23e4a;--shadow:0 12px 35px rgba(23,32,51,.06)}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.7 system-ui,Arial,sans-serif}button,input,textarea{font:inherit}.app{display:grid;grid-template-columns:250px minmax(0,1fr);min-height:100vh}.side{background:#17233b;color:#fff;padding:25px 18px;position:sticky;top:0;height:100vh}.brand{font-size:21px;font-weight:850;letter-spacing:.08em;padding:4px 12px 28px}.brand small{display:block;font-size:10px;color:#9eabc5;letter-spacing:.16em;font-weight:600}.navtitle{font-size:10px;color:#8796b5;padding:10px 12px}.nav a{display:flex;gap:12px;align-items:center;color:#d9e1f0;text-decoration:none;padding:11px 13px;border-radius:10px;margin:4px 0}.nav a.active,.nav a:hover{background:#2a3c60;color:white}.sidefoot{position:absolute;bottom:20px;right:20px;left:20px;color:#93a1bb;font-size:11px;border-top:1px solid #34425d;padding-top:14px}.main{padding:30px;max-width:1500px;width:100%;margin:auto}.top{display:flex;justify-content:space-between;align-items:center;gap:14px;margin-bottom:24px}.eyebrow{color:var(--blue);font-size:10px;font-weight:800;letter-spacing:.15em}.top h1{font-size:27px;margin:3px 0}.muted{color:var(--muted)}.actions{display:flex;gap:8px;align-items:center}.btn{border:0;background:var(--blue);color:#fff;border-radius:10px;padding:10px 15px;cursor:pointer;font-weight:700}.btn.secondary{background:var(--blue2);color:var(--blue)}.btn:disabled{opacity:.55;cursor:wait}.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:20px}.stat,.panel{background:var(--panel);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow)}.stat{padding:18px}.statlabel{color:var(--muted);font-size:12px}.stat strong{display:block;font-size:28px;line-height:1.4;margin-top:5px}.stat .hint{font-size:11px;color:var(--muted)}.layout{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(280px,.8fr);gap:16px;align-items:start}.panel{padding:20px;margin-bottom:16px}.panelhead{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:14px}.panel h2{font-size:17px;margin:0}.exam{border:1px solid var(--line);border-radius:13px;padding:14px;margin:10px 0;background:#fff}.examhead{display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap}.studentname{font-weight:800;font-size:15px}.tag{display:inline-block;background:#eef2ff;color:#405fc4;border-radius:30px;padding:3px 9px;font-size:11px;font-weight:700}.score{font-size:18px;font-weight:850}.exam details{margin-top:10px;border-top:1px solid var(--line);padding-top:9px}.exam summary{cursor:pointer;color:var(--blue);font-weight:700}.answer{border-top:1px solid var(--line);padding:10px 0}.good{color:var(--green)}.bad{color:var(--red)}.paragraph{white-space:pre-wrap;background:#f6f8fc;padding:12px;border-radius:9px;margin:8px 0}.studentlist{display:grid;gap:8px}.studentbtn{display:flex;justify-content:space-between;align-items:center;text-align:right;background:#fff;border:1px solid var(--line);border-radius:11px;padding:12px;cursor:pointer;color:var(--ink)}.studentbtn.selected{border-color:var(--blue);background:#f1f4ff}.studentbtn small{display:block;color:var(--muted)}.detailtitle{font-size:19px;font-weight:850}.field{display:block;width:100%;border:1px solid var(--line);border-radius:10px;padding:11px;margin:7px 0 12px;background:#fff;color:var(--ink)}textarea.field{resize:vertical}.note{border:1px solid var(--line);border-radius:10px;padding:12px;margin:9px 0}.empty{padding:25px;text-align:center;color:var(--muted);background:#f8f9fc;border-radius:12px}.status{font-size:12px;color:var(--muted);margin:10px 0}.error{color:var(--red)}.success{color:var(--green)}.hidden{display:none!important}
@@ -29,7 +28,7 @@
 </main></div>
 <script>
 const URL='https://ruliophlnvsexzjekdbs.supabase.co',KEY='sb_publishable_8un51zcumxHLX_M8gRqziQ_YxhgXnSC';
-const db=window.supabase.createClient(URL,KEY),$=id=>document.getElementById(id);
+const $=id=>document.getElementById(id);
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let attempts=[],assessments=[],students=[],selectedStudent='';
 function groupStudents(){
@@ -75,8 +74,16 @@ async function refreshAll(){
  finally{btn.disabled=false;btn.textContent='↻ تحديث البيانات'}
 }
 async function fetchAllRows(table){
- const rows=[];let from=0;const pageSize=1000;
- while(true){const {data,error}=await db.from(table).select('*').order('created_at',{ascending:false}).range(from,from+pageSize-1);if(error)throw new Error('تحميل '+table+': '+error.message);rows.push(...(data||[]));if(!data||data.length<pageSize)break;from+=pageSize;}
+ const rows=[];let offset=0;const pageSize=1000;
+ while(true){
+  const url=URL+'/rest/v1/'+table+'?select=*&order=created_at.desc&limit='+pageSize+'&offset='+offset;
+  const response=await fetch(url,{method:'GET',headers:{'apikey':KEY,'Authorization':'Bearer '+KEY,'Accept':'application/json'}});
+  const raw=await response.text();let data;
+  try{data=raw?JSON.parse(raw):[]}catch(_){throw new Error('استجابة غير مفهومة من قاعدة البيانات ('+table+'): '+raw.slice(0,180))}
+  if(!response.ok)throw new Error('تحميل '+table+' فشل (HTTP '+response.status+'): '+((data&&data.message)||raw.slice(0,220)));
+  if(!Array.isArray(data))throw new Error('شكل بيانات غير متوقع من '+table);
+  rows.push(...data);if(data.length<pageSize)break;offset+=pageSize;
+ }
  return rows;
 }
 function changeAssessmentStudent(name){selectedStudent=name;const s=$('assessmentStatus');s.textContent=name?'التقييم الجديد سيتم ربطه بالطالب: '+name:'اختار طالبًا قبل الحفظ.';s.className='status';renderStudent(name);}
