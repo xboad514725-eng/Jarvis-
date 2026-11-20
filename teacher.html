@@ -23,7 +23,7 @@
 </section>
 <aside>
 <div class="panel" id="students"><div class="panelhead"><h2>نتائج الطلاب</h2><span class="tag" id="studentTag">0</span></div><div class="muted" style="font-size:12px;margin-bottom:12px">اضغط على اسم الطالب لعرض كل امتحاناته.</div><div id="studentList" class="studentlist"><div class="empty">جارٍ تحميل الطلاب...</div></div></div>
-<div class="panel" id="assessment"><div class="panelhead"><h2>إضافة تقييم</h2></div><div class="muted" style="font-size:12px">اختار الطالب ثم اكتب التقييم واحفظه في قاعدة البيانات.</div><label for="assessmentType">نوع التقييم</label><input class="field" id="assessmentType" maxlength="80" value="Oral assessment" placeholder="Speaking / Writing / General"><label for="assessmentText">ملاحظات المدرّسة</label><textarea class="field" id="assessmentText" rows="5" maxlength="10000" placeholder="الطلاقة، النطق، القواعد، المفردات، التفاعل..."></textarea><button class="btn" id="saveAssessmentBtn" onclick="saveAssessment()">حفظ التقييم</button><div id="assessmentStatus" class="status" aria-live="polite"></div></div>
+<div class="panel" id="assessment"><div class="panelhead"><h2>إضافة تقييم</h2></div><div class="muted" style="font-size:12px">اختار الطالب صراحةً، ثم اكتب التقييم واحفظه. سيظهر تأكيد واضح بعد نجاح الحفظ.</div><label for="assessmentStudent">الطالب</label><select class="field" id="assessmentStudent" onchange="changeAssessmentStudent(this.value)"><option value="">تحميل أسماء الطلاب...</option></select><label for="assessmentType">نوع التقييم</label><input class="field" id="assessmentType" maxlength="80" value="Oral assessment" placeholder="Speaking / Writing / General"><label for="assessmentText">ملاحظات المدرّسة</label><textarea class="field" id="assessmentText" rows="5" maxlength="10000" placeholder="الطلاقة، النطق، القواعد، المفردات، التفاعل..."></textarea><button class="btn" id="saveAssessmentBtn" onclick="saveAssessment()">حفظ التقييم</button><div id="assessmentStatus" class="status" aria-live="polite"></div></div>
 </aside>
 </div><div id="globalStatus" class="status"></div>
 </main></div>
@@ -41,6 +41,8 @@ function groupStudents(){
 function dateText(v){if(!v)return '—';const d=new Date(v);return isNaN(d)?esc(v):d.toLocaleString('ar-EG',{dateStyle:'medium',timeStyle:'short'})}
 function render(){
  groupStudents();
+ const studentSelect=$('assessmentStudent');
+ if(studentSelect){const previous=selectedStudent;studentSelect.innerHTML='<option value="">اختر الطالب</option>'+students.map(s=>'<option value="'+esc(s.name)+'">'+esc(s.name)+'</option>').join('');if(students.some(s=>s.name.toLocaleLowerCase()===previous.toLocaleLowerCase()))studentSelect.value=previous;else if(students.length){selectedStudent=students[0].name;studentSelect.value=selectedStudent;}}
  $('examCount').textContent=attempts.length;
  $('studentCount').textContent=students.length;
  $('assessmentCount').textContent=assessments.length;
@@ -65,26 +67,33 @@ function renderStudent(name){
 async function refreshAll(){
  const btn=$('refreshBtn');btn.disabled=true;btn.textContent='جارٍ التحديث...';$('globalStatus').textContent='جارٍ تحميل البيانات من قاعدة البيانات...';
  try{
-  const [a,n]=await Promise.all([db.from('english_test_attempts').select('*').order('created_at',{ascending:false}),db.from('english_teacher_assessments').select('*').order('created_at',{ascending:false})]);
-  if(a.error)throw new Error('تحميل الامتحانات: '+a.error.message);
-  if(n.error)throw new Error('تحميل التقييمات: '+n.error.message);
-  attempts=a.data||[];assessments=n.data||[];
+  const [allAttempts,allAssessments]=await Promise.all([fetchAllRows('english_test_attempts'),fetchAllRows('english_teacher_assessments')]);
+  attempts=allAttempts;assessments=allAssessments;
   if(selectedStudent&&!attempts.some(x=>x.student_name.toLocaleLowerCase()===selectedStudent.toLocaleLowerCase())&&!assessments.some(x=>x.student_name.toLocaleLowerCase()===selectedStudent.toLocaleLowerCase()))selectedStudent='';
   render();$('globalStatus').textContent='تم تحديث البيانات · '+dateText(new Date().toISOString());$('globalStatus').className='status success';
  }catch(e){$('globalStatus').textContent='تعذر تحميل البيانات: '+e.message;$('globalStatus').className='status error';$('latestExams').innerHTML='<div class="empty error">'+esc(e.message)+'</div>'}
  finally{btn.disabled=false;btn.textContent='↻ تحديث البيانات'}
 }
+async function fetchAllRows(table){
+ const rows=[];let from=0;const pageSize=1000;
+ while(true){const {data,error}=await db.from(table).select('*').order('created_at',{ascending:false}).range(from,from+pageSize-1);if(error)throw new Error('تحميل '+table+': '+error.message);rows.push(...(data||[]));if(!data||data.length<pageSize)break;from+=pageSize;}
+ return rows;
+}
+function changeAssessmentStudent(name){selectedStudent=name;const s=$('assessmentStatus');s.textContent=name?'التقييم الجديد سيتم ربطه بالطالب: '+name:'اختار طالبًا قبل الحفظ.';s.className='status';renderStudent(name);}
 async function saveAssessment(){
- const status=$('assessmentStatus'),btn=$('saveAssessmentBtn'),text=$('assessmentText').value.trim(),type=$('assessmentType').value.trim()||'General assessment';
- if(!selectedStudent){status.textContent='اختار اسم الطالب من قائمة نتائج الطلاب أولاً.';status.className='status error';return}
- if(!text){status.textContent='اكتب التقييم قبل الحفظ.';status.className='status error';$('assessmentText').focus();return}
- btn.disabled=true;btn.textContent='جارٍ الحفظ...';status.textContent='جارٍ حفظ التقييم في قاعدة البيانات...';status.className='status';
+ const status=$('assessmentStatus'),btn=$('saveAssessmentBtn'),text=$('assessmentText').value.trim(),type=$('assessmentType').value.trim()||'Oral assessment',student=$('assessmentStudent').value.trim();
+ if(!student){status.textContent='اختار اسم الطالب من القائمة أولاً.';status.className='status error';$('assessmentStudent').focus();return}
+ if(!text){status.textContent='اكتب ملاحظات التقييم الشفهي قبل الحفظ.';status.className='status error';$('assessmentText').focus();return}
+ btn.disabled=true;btn.textContent='جارٍ الحفظ...';status.textContent='جارٍ إرسال التقييم إلى قاعدة البيانات...';status.className='status';
  try{
-  const {data,error}=await db.from('english_teacher_assessments').insert({student_name:selectedStudent,assessment_type:type,assessment_text:text}).select('*').single();
-  if(error)throw error;
-  if(!data||!data.id)throw new Error('لم ترجع قاعدة البيانات سجلًا محفوظًا.');
-  assessments.unshift(data);$('assessmentText').value='';render();status.textContent='تم حفظ التقييم بنجاح في قاعدة البيانات.';status.className='status success';
- }catch(e){status.textContent='فشل حفظ التقييم: '+(e.message||String(e));status.className='status error'}
+  const response=await fetch(URL+'/rest/v1/english_teacher_assessments',{method:'POST',headers:{'apikey':KEY,'Authorization':'Bearer '+KEY,'Content-Type':'application/json','Accept':'application/json','Prefer':'return=representation'},body:JSON.stringify({student_name:student,assessment_type:type,assessment_text:text})});
+  const body=await response.text();let parsed;try{parsed=body?JSON.parse(body):null}catch(_){parsed={message:body}}
+  if(!response.ok)throw new Error((parsed&& (parsed.message||parsed.details||parsed.hint))||('HTTP '+response.status));
+  const data=Array.isArray(parsed)?parsed[0]:parsed;
+  if(!data||!data.id)throw new Error('لم يصل تأكيد الحفظ من قاعدة البيانات.');
+  assessments.unshift(data);selectedStudent=student;$('assessmentStudent').value=student;$('assessmentText').value='';render();
+  status.textContent='✓ تم حفظ التقييم الشفهي في قاعدة البيانات بنجاح · '+dateText(data.created_at);status.className='status success';
+ }catch(e){status.textContent='لم يتم الحفظ: '+(e.message||String(e));status.className='status error'}
  finally{btn.disabled=false;btn.textContent='حفظ التقييم'}
 }
 refreshAll();
