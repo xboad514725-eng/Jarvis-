@@ -47,7 +47,7 @@ function render(){
  const avg=attempts.length?attempts.reduce((n,r)=>n+(Number(r.total_score)||0),0)/attempts.length:0;
  $('averageScore').textContent=attempts.length?avg.toFixed(1)+'/20':'—';
  $('studentTag').textContent=students.length;
- $('studentList').innerHTML=students.length?students.map(s=>{const count=s.attempts.length;return '<button class="studentbtn '+(selectedStudent.toLocaleLowerCase()===s.name.toLocaleLowerCase()?'selected':'')+'" onclick="selectStudent('+JSON.stringify(s.name).replace(/</g,'\\u003c')+')"><span><b>'+esc(s.name)+'</b><small>'+count+' امتحان · '+assessments.filter(a=>a.student_name.trim().toLocaleLowerCase()===s.name.toLocaleLowerCase()).length+' تقييم</small></span><b>‹</b></button>'}).join(''):'<div class="empty">لا يوجد طلاب حتى الآن.</div>';
+ $('studentList').innerHTML=students.length?students.map(s=>{const count=s.attempts.length;return '<button class="studentbtn '+(selectedStudent.toLocaleLowerCase()===s.name.toLocaleLowerCase()?'selected':'')+'" onclick="selectStudent('+JSON.stringify(s.name).replace(/</g,'\\u003c').replace(/\"/g,'&quot;')+')"><span><b>'+esc(s.name)+'</b><small>'+count+' امتحان · '+assessments.filter(a=>a.student_name.trim().toLocaleLowerCase()===s.name.toLocaleLowerCase()).length+' تقييم</small></span><b>‹</b></button>'}).join(''):'<div class="empty">لا يوجد طلاب حتى الآن.</div>';
  const recent=attempts.slice().sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
  $('latestExams').innerHTML=recent.length?recent.map((r,i)=>examCard(r,i,false)).join(''):'<div class="empty">لسه مفيش امتحانات اتسلّمت.</div>';
  if(selectedStudent){renderStudent(selectedStudent)}else if(students.length){selectedStudent=students[0].name;render()}
